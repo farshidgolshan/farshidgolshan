@@ -1,0 +1,75 @@
+import numpy as np
+import pandas as pd
+from scipy.stats import beta
+import random
+
+#Read the key answer list from the first excel file and store it in a dataframe
+df_key = pd.read_excel('c://users//farsh//desktop//key_answers.xlsx')
+
+#Read the real students answers from the second excel file and store it in another dataframe
+df_real = pd.read_excel('c://users//farsh//desktop//real_answers.xlsx')
+
+#Join the two dataframes on the subject and question columns and add a column for whether the student answer is correct or not by comparing it with the key answer
+df_real = df_real.merge(df_key, on=['Subject', 'Question'], how='left')
+df_real['Correct'] = df_real['Student Answer'] == df_real['Key Answer']
+
+#Calculate the difficulty level of each question by counting the number of correct answers divided by the total number of answers for that question
+df_difficulty = df_real.groupby(['Subject', 'Question'])['Correct'].mean().reset_index()
+df_difficulty.columns = ['Subject', 'Question', 'Difficulty']
+
+#Define the number of fake students and the desired percentage for each subject
+n_fake = 24 # 6 times more than real students
+desired_percentages = [0.75, 0.65, 0.85, 0.55, 0.45] # must be between 0 and 1
+
+#Generate random answers for fake students based on the difficulty level of each question and the desired percentage for each subject
+#You can use a probability distribution that takes into account both factors, such as a beta distribution or a logistic distribution
+#You can also add some randomness to simulate wrong answers and unanswered questions
+
+#Create an empty list to store the fake data
+fake_data = []
+
+#Loop through each subject
+for i in range(len(desired_percentages)):
+#Get the desired percentage for this subject
+p = desired_percentages[i]
+#Get the subset of questions for this subject from the difficulty dataframe
+df_sub = df_difficulty[df_difficulty['Subject'] == 'Subject ' + str(i+1)]
+#Get the number of questions for this subject
+n_questions = df_sub.shape[0]
+#Loop through each fake student
+for j in range(n_fake):
+#Create an empty dictionary to store the fake student data
+fake_student = {}
+#Assign a fake student ID
+fake_student['Student ID'] = 'Fake Student ' + str(j+1)
+#Assign the subject name
+fake_student['Subject'] = 'Subject ' + str(i+1)
+#Loop through each question for this subject
+for k in range(n_questions):
+#Get the question name
+question = 'Question ' + str(k+1)
+#Get the difficulty level of this question
+difficulty = df_sub[df_sub['Question'] == question]['Difficulty'].values[0]
+#Generate a random answer for this question based on a beta distribution with parameters p and difficulty
+#You can change this to another distribution if you want
+answer = np.random.beta(p*difficulty, (1-p)*difficulty)
+#Round the answer to an integer between 1 and 4 (inclusive)
+answer = int(np.round(answer*3)) + 1
+#Add some randomness to simulate wrong answers and unanswered questions by flipping a coin with probability 0.1
+#If the coin is heads, change the answer to a random integer between 1 and 4 (inclusive)
+#If the coin is tails, change the answer to 0 (meaning no answer)
+if np.random.random() < 0.1:
+    if np.random.random() < 0.5:
+        answer = np.random.randint(1, 5)
+else:
+    answer = 0
+#Assign the answer to the fake student dictionary with the question name as the key
+fake_student[question] = answer
+#Append the fake student dictionary to the fake data list at this indentation level
+fake_data.append(fake_student)
+
+#Create a dataframe with fake students data
+df_fake = pd.DataFrame(fake_data)
+
+#Save the dataframe to an excel file
+df_fake.to_excel('C://users//farsh//desktop//fake_answers.xlsx', index=False)
